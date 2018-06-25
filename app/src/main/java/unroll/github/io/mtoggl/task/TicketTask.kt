@@ -5,7 +5,7 @@ import android.support.v7.widget.Toolbar
 
 class TicketTask : AsyncTask<Void, Long, Boolean> {
     private var toolbar: Toolbar? = null
-    private var ticket: Long = 0
+    var ticket: Long = 0
     private var completeFlag = false
 
     constructor() {}

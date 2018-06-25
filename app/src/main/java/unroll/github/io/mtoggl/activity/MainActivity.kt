@@ -7,15 +7,13 @@ import android.support.v4.app.Fragment
 import android.support.v4.view.ViewPager
 import android.support.v4.widget.DrawerLayout
 import android.support.v7.view.menu.ActionMenuItemView
-import android.support.v7.view.menu.MenuItemImpl
-import android.support.v7.view.menu.MenuView
 import android.support.v7.widget.Toolbar
 import android.util.Log
 import android.view.Gravity
 import android.view.Menu
 import android.view.MenuItem
-import android.view.View
 import android.widget.Button
+import android.widget.EditText
 import com.orhanobut.dialogplus.DialogPlus
 import com.orhanobut.dialogplus.ViewHolder
 import unroll.github.io.mtoggl.R
@@ -23,9 +21,21 @@ import unroll.github.io.mtoggl.activity.base.BaseActivity
 import unroll.github.io.mtoggl.adapter.PagerAdapter
 import unroll.github.io.mtoggl.fragment.RecordFragment
 import unroll.github.io.mtoggl.fragment.TagFragment
+import unroll.github.io.mtoggl.presenter.RecordPresenter
 import unroll.github.io.mtoggl.task.TicketTask
+import android.text.method.TextKeyListener.clear
 
-class MainActivity : BaseActivity() {
+
+class MainActivity : BaseActivity(), TabLayout.OnTabSelectedListener {
+    override fun onTabReselected(tab: TabLayout.Tab?) {
+    }
+
+    override fun onTabUnselected(tab: TabLayout.Tab?) {
+    }
+
+    override fun onTabSelected(tab: TabLayout.Tab?) {
+        notifyDataSetChanged()
+    }
 
     override var layoutResID: Int? = R.layout.activity_main
 
@@ -35,6 +45,9 @@ class MainActivity : BaseActivity() {
     private var navigation: NavigationView? = null
     private var drawer: DrawerLayout? = null
 
+    private var recordFragment: RecordFragment? = null
+    private var tagFragment: TagFragment? = null
+
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.toolbar, menu)
         return true
@@ -43,6 +56,8 @@ class MainActivity : BaseActivity() {
     private var isStart = false
     var control: ActionMenuItemView? = null
     var ticketTask: TicketTask? = null
+    var description: String? = null
+    private var tagName: String? = null
 
     @SuppressLint("RestrictedApi")
     override fun onOptionsItemSelected(item: MenuItem?): Boolean {
@@ -60,6 +75,8 @@ class MainActivity : BaseActivity() {
                     create.setOnClickListener {
                         // 开始一个计时任务
                         isStart = true;
+                        description = dialog.holderView.findViewById<EditText>(R.id.description).text.toString()
+                        tagName = dialog.holderView.findViewById<EditText>(R.id.tag).text.toString()
                         ticketTask = if (ticketTask != null) {
                             ticketTask!!.complete()
                             TicketTask(toolbar!!)
@@ -73,9 +90,13 @@ class MainActivity : BaseActivity() {
                     // 结束一个计时任务
                     isStart = false
                     ticketTask!!.complete()
-                    ticketTask = null
                     control!!.setIcon(getDrawable(R.drawable.start))
                     // TODO 保存工作
+                    val record = RecordPresenter.add(description!!, tagName!!, ticketTask!!.ticket)
+                    recordFragment!!.addElement(record)
+
+                    Log.d("个数", RecordPresenter.getRecordAll().size.toString())
+                    ticketTask = null
                 }
             }
         }
@@ -92,6 +113,7 @@ class MainActivity : BaseActivity() {
 
         initBar()
         initTabs()
+        initNavigation()
     }
 
     private fun initBar() {
@@ -107,12 +129,38 @@ class MainActivity : BaseActivity() {
         }
 
         val fragments = ArrayList<Fragment>()
-        fragments.add(RecordFragment())
-        fragments.add(TagFragment())
+        recordFragment = RecordFragment()
+        tagFragment = TagFragment()
+        fragments.add(recordFragment!!)
+        fragments.add(tagFragment!!)
 
         val adapter = PagerAdapter(supportFragmentManager, fragments, titles);
         pager!!.adapter = adapter;
         tabs!!.setupWithViewPager(pager)
+
+        tabs!!.addOnTabSelectedListener(this)
+    }
+
+    private fun initNavigation() {
+        navigation!!.setNavigationItemSelectedListener {
+            when (it.itemId) {
+                (R.id.info) -> {
+                    DialogPlus.newDialog(this)
+                            .setContentHolder(ViewHolder(R.layout.dialog_info))
+                            .setExpanded(true)
+                            .setPadding(120, 120, 120, 0)
+                            .create()
+                            .show()
+                    drawer!!.closeDrawers()
+                }
+            }
+            true
+        }
+    }
+
+    private fun notifyDataSetChanged() {
+        recordFragment!!.notifyDataSetChanged()
+        tagFragment!!.notifyDataSetChanged()
     }
 }
 
